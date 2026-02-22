@@ -1,8 +1,8 @@
 'use client'
-import { useState, useEffect, useCallback } from 'react'
+import { Fragment, useState, useEffect, useCallback } from 'react'
 import {
-  ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip,
-  ResponsiveContainer, LineChart, Area, AreaChart, ReferenceLine, Legend,
+  ComposedChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
+  ResponsiveContainer, Area, AreaChart, ReferenceLine,
 } from 'recharts'
 import {
   TrendingUp, TrendingDown, Play, RefreshCw,
@@ -99,12 +99,12 @@ function CumulativeTooltip({ active, payload, label }: {
 }) {
   if (!active || !payload?.length) return null
   return (
-    <div className="bg-white border border-border rounded-xl shadow-lg p-3 text-xs min-w-[160px]">
+    <div className="bg-white border border-border rounded-xl shadow-lg p-3 text-xs min-w-[170px]">
       <div className="font-semibold text-foreground mb-2">FY{String(label).slice(-2)}</div>
       {payload.map((p, i) => (
         <div key={i} className="flex items-center justify-between gap-4 mb-1">
           <span style={{ color: p.color }} className="font-medium">{p.name}</span>
-          <span className="font-bold">₹{fmt(p.value, 0)}</span>
+          <span className="font-bold">₹{(p.value / 100).toFixed(2)}L</span>
         </div>
       ))}
     </div>
@@ -210,11 +210,11 @@ export default function BacktestPage() {
     'Nifty 50': Math.round((summary.benchmark_returns[i] ?? 0) * 10) / 10,
   })) ?? []
 
-  const cumulativeChartData = summary?.years.map((y, i) => ({
-    year: y,
-    Portfolio: Math.round((summary.cumulative_portfolio[i] ?? 100) * 10) / 10,
-    'Nifty 50': Math.round((summary.cumulative_benchmark[i] ?? 100) * 10) / 10,
-  })) ?? []
+    const cumulativeChartData = summary?.years.map((y, i) => ({
+      year: y,
+      Portfolio: Math.round((summary.cumulative_portfolio[i] ?? 100) * 1000) / 10,
+      'Nifty 50': Math.round((summary.cumulative_benchmark[i] ?? 100) * 1000) / 10,
+    })) ?? []
 
   const drawdownChartData = summary?.metrics.drawdown_series?.map((d, i) => ({
     year: summary.years[i],
@@ -294,61 +294,60 @@ export default function BacktestPage() {
         </div>
       ) : (
         <>
-          {/* Annual Returns: Bar + Line */}
-          <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
-            <div className="flex items-center justify-between mb-3">
-              <div>
-                <h2 className="text-sm font-semibold">Annual Returns</h2>
-                <p className="text-xs text-muted-foreground">Portfolio (bars) vs Nifty 50 (line)</p>
+            {/* Annual Returns: Grouped Bars */}
+            <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+              <div className="flex items-center justify-between mb-3">
+                <div>
+                  <h2 className="text-sm font-semibold">Annual Returns</h2>
+                  <p className="text-xs text-muted-foreground">Portfolio vs Nifty 50</p>
+                </div>
+                <div className="flex items-center gap-3 text-xs">
+                  <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-sm bg-primary inline-block" /> Portfolio</span>
+                  <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-sm bg-amber-400 inline-block" /> Nifty 50</span>
+                </div>
               </div>
-              <div className="flex items-center gap-3 text-xs">
-                <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-sm bg-primary inline-block" /> Portfolio</span>
-                <span className="flex items-center gap-1"><span className="w-3 h-2 border-t-2 border-amber-500 inline-block" /> Nifty 50</span>
-              </div>
+              <ResponsiveContainer width="100%" height={260}>
+                <ComposedChart data={annualChartData} margin={{ top: 5, right: 8, bottom: 5, left: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+                  <XAxis
+                    dataKey="year"
+                    tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
+                    tickLine={false}
+                    axisLine={false}
+                    tickFormatter={y => `FY${String(y).slice(-2)}`}
+                  />
+                  <YAxis
+                    tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
+                    tickLine={false}
+                    axisLine={false}
+                    tickFormatter={v => `${v}%`}
+                    width={42}
+                  />
+                  <Tooltip content={<AnnualTooltip />} />
+                  <ReferenceLine y={0} stroke="hsl(var(--border))" strokeWidth={1.5} />
+                  <Bar
+                    dataKey="Portfolio"
+                    fill="hsl(var(--primary))"
+                    radius={[3, 3, 0, 0]}
+                    opacity={0.85}
+                    maxBarSize={22}
+                  />
+                  <Bar
+                    dataKey="Nifty 50"
+                    fill="#f59e0b"
+                    radius={[3, 3, 0, 0]}
+                    opacity={0.8}
+                    maxBarSize={22}
+                  />
+                </ComposedChart>
+              </ResponsiveContainer>
             </div>
-            <ResponsiveContainer width="100%" height={260}>
-              <ComposedChart data={annualChartData} margin={{ top: 5, right: 8, bottom: 5, left: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
-                <XAxis
-                  dataKey="year"
-                  tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
-                  tickLine={false}
-                  axisLine={false}
-                  tickFormatter={y => `FY${String(y).slice(-2)}`}
-                />
-                <YAxis
-                  tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
-                  tickLine={false}
-                  axisLine={false}
-                  tickFormatter={v => `${v}%`}
-                  width={42}
-                />
-                <Tooltip content={<AnnualTooltip />} />
-                <ReferenceLine y={0} stroke="hsl(var(--border))" strokeWidth={1.5} />
-                <Bar
-                  dataKey="Portfolio"
-                  fill="hsl(var(--primary))"
-                  radius={[3, 3, 0, 0]}
-                  opacity={0.85}
-                  maxBarSize={28}
-                />
-                <Line
-                  dataKey="Nifty 50"
-                  type="monotone"
-                  stroke="#f59e0b"
-                  strokeWidth={2}
-                  dot={{ r: 3, fill: '#f59e0b' }}
-                  activeDot={{ r: 5 }}
-                />
-              </ComposedChart>
-            </ResponsiveContainer>
-          </div>
 
-          {/* Cumulative Growth of ₹100 */}
+          {/* Cumulative Growth of ₹1 Lakh */}
           <div className="rounded-2xl border border-border bg-card p-4 shadow-sm">
             <div className="flex items-center justify-between mb-3">
               <div>
-                <h2 className="text-sm font-semibold">Cumulative Growth of ₹100</h2>
+                <h2 className="text-sm font-semibold">Cumulative Growth of ₹1 Lakh</h2>
                 <p className="text-xs text-muted-foreground">Equal-weighted, annually rebalanced</p>
               </div>
               <div className="flex items-center gap-3 text-xs">
@@ -360,6 +359,24 @@ export default function BacktestPage() {
                 </span>
               </div>
             </div>
+            {/* Final values */}
+            {cumulativeChartData.length > 0 && (() => {
+              const last = cumulativeChartData[cumulativeChartData.length - 1]
+              return (
+                <div className="flex items-center gap-4 mb-3">
+                  <div className="flex items-center gap-1.5 text-xs">
+                    <span className="w-2.5 h-2.5 rounded-full bg-primary inline-block" />
+                    <span className="text-muted-foreground">Portfolio:</span>
+                    <span className="font-bold text-primary">₹{(last.Portfolio / 100).toFixed(2)}L</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 text-xs">
+                    <span className="w-2.5 h-2.5 rounded-full bg-amber-400 inline-block" />
+                    <span className="text-muted-foreground">Nifty 50:</span>
+                    <span className="font-bold text-amber-600">₹{(last['Nifty 50'] / 100).toFixed(2)}L</span>
+                  </div>
+                </div>
+              )
+            })()}
             <ResponsiveContainer width="100%" height={200}>
               <AreaChart data={cumulativeChartData} margin={{ top: 5, right: 8, bottom: 5, left: 0 }}>
                 <defs>
@@ -384,8 +401,8 @@ export default function BacktestPage() {
                   tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
                   tickLine={false}
                   axisLine={false}
-                  tickFormatter={v => `₹${v}`}
-                  width={52}
+                  tickFormatter={v => `₹${(v / 100).toFixed(1)}L`}
+                  width={62}
                 />
                 <Tooltip content={<CumulativeTooltip />} />
                 <Area
@@ -533,16 +550,15 @@ export default function BacktestPage() {
                     <th className="text-center px-4 py-3 w-8" />
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-border/50">
-                  {sortedRows.map(row => (
-                    <>
-                      <tr
-                        key={row.return_year}
-                        className={`cursor-pointer transition-colors hover:bg-muted/30 ${
-                          row.outperformed ? 'border-l-2 border-l-emerald-400' : 'border-l-2 border-l-red-400'
-                        }`}
-                        onClick={() => setExpandedYear(expandedYear === row.return_year ? null : row.return_year)}
-                      >
+                  <tbody className="divide-y divide-border/50">
+                    {sortedRows.map(row => (
+                      <Fragment key={row.return_year}>
+                        <tr
+                          className={`cursor-pointer transition-colors hover:bg-muted/30 ${
+                            row.outperformed ? 'border-l-2 border-l-emerald-400' : 'border-l-2 border-l-red-400'
+                          }`}
+                          onClick={() => setExpandedYear(expandedYear === row.return_year ? null : row.return_year)}
+                        >
                         <td className="px-4 py-3.5">
                           <div className="font-bold text-sm">FY{String(row.return_year).slice(-2)}</div>
                           <div className="text-xs text-muted-foreground">Selected FY{String(row.selection_year).slice(-2)} · {row.num_stocks} stocks</div>
@@ -571,28 +587,28 @@ export default function BacktestPage() {
                             : <ChevronRight className="w-4 h-4 text-muted-foreground" />}
                         </td>
                       </tr>
-                      {expandedYear === row.return_year && row.holdings.length > 0 && (
-                        <tr key={`${row.return_year}-holdings`}>
-                          <td colSpan={6} className="px-4 py-3 bg-muted/10">
-                            <div className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wide">
-                              Top Holdings — Selected FY{String(row.selection_year).slice(-2)}
-                            </div>
-                            <div className="flex flex-wrap gap-1.5">
-                              {row.holdings.map(h => (
-                                <span key={h.ticker} className="inline-flex items-center gap-1 bg-white border border-border rounded-lg px-2 py-1 text-xs">
-                                  <span className="font-bold">{h.ticker}</span>
-                                  <span className="text-muted-foreground">·</span>
-                                  <span className={h.return >= 0 ? 'text-emerald-600' : 'text-red-600'}>
-                                    {h.return >= 0 ? '+' : ''}{fmt(h.return)}%
+                        {expandedYear === row.return_year && row.holdings.length > 0 && (
+                          <tr>
+                            <td colSpan={6} className="px-4 py-3 bg-muted/10">
+                              <div className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wide">
+                                Top Holdings — Selected FY{String(row.selection_year).slice(-2)}
+                              </div>
+                              <div className="flex flex-wrap gap-1.5">
+                                {row.holdings.map(h => (
+                                  <span key={h.ticker} className="inline-flex items-center gap-1 bg-white border border-border rounded-lg px-2 py-1 text-xs">
+                                    <span className="font-bold">{h.ticker}</span>
+                                    <span className="text-muted-foreground">·</span>
+                                    <span className={h.return >= 0 ? 'text-emerald-600' : 'text-red-600'}>
+                                      {h.return >= 0 ? '+' : ''}{fmt(h.return)}%
+                                    </span>
                                   </span>
-                                </span>
-                              ))}
-                            </div>
-                          </td>
-                        </tr>
-                      )}
-                    </>
-                  ))}
+                                ))}
+                              </div>
+                            </td>
+                          </tr>
+                        )}
+                      </Fragment>
+                    ))}
                 </tbody>
               </table>
             </div>
