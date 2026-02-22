@@ -210,11 +210,22 @@ export default function BacktestPage() {
     'Nifty 50': Math.round((summary.benchmark_returns[i] ?? 0) * 10) / 10,
   })) ?? []
 
-    const cumulativeChartData = summary?.years.map((y, i) => ({
-      year: y,
-      Portfolio: Math.round((summary.cumulative_portfolio[i] ?? 100) * 1000) / 10,
-      'Nifty 50': Math.round((summary.cumulative_benchmark[i] ?? 100) * 1000) / 10,
-    })) ?? []
+  // Prepend FY11 starting point at ₹1L (base 100), then append each return year
+  const cumulativeChartData = (() => {
+    if (!summary) return []
+    const startYear = (summary.years[0] ?? 2012) - 1   // FY11
+    const rows: { year: number; Portfolio: number; 'Nifty 50': number }[] = [
+      { year: startYear, Portfolio: 100, 'Nifty 50': 100 },
+    ]
+    summary.years.forEach((y, i) => {
+      rows.push({
+        year: y,
+        Portfolio: Math.round((summary.cumulative_portfolio[i] ?? 100) * 100) / 100,
+        'Nifty 50': Math.round((summary.cumulative_benchmark[i] ?? 100) * 100) / 100,
+      })
+    })
+    return rows
+  })()
 
   const drawdownChartData = summary?.metrics.drawdown_series?.map((d, i) => ({
     year: summary.years[i],
